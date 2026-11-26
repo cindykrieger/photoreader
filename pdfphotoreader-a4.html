@@ -674,7 +674,7 @@
 
       <h3>Dwell (time per page)</h3>
       <table>
-        <tr><td><kbd>+</kbd> <kbd>-</kbd> or the box</td><td>Set seconds per page, from 0.05 to 5. The default is 0.1 seconds.</td></tr>
+        <tr><td><kbd>+</kbd> <kbd>-</kbd> or the box</td><td>Set seconds per page, from 0.01 to 5. The default is 0.1 seconds. <kbd>+</kbd> and <kbd>-</kbd> change it by 0.05; type in the box for hundredths (the lowest is 0.01).</td></tr>
       </table>
 
       <div id="help-light-basic">
@@ -776,7 +776,7 @@
     <div class="sep"></div>
     <div class="group">
       <label class="field" for="dwell-number">Dwell
-        <input id="dwell-number" type="number" min="0.05" max="5" step="0.05" value="0.1" aria-label="Dwell time in seconds">
+        <input id="dwell-number" type="number" min="0.01" max="5" step="0.01" value="0.1" aria-label="Dwell time in seconds">
         s
       </label>
     </div>
@@ -814,9 +814,10 @@
     "use strict";
 
     var DEFAULT_DWELL = 0.1;
-    var MIN_DWELL = 0.05;
+    var MIN_DWELL = 0.01;
     var MAX_DWELL = 5;
-    var DWELL_STEP = 0.05;
+    var DWELL_STEP = 0.05;   // + / - change
+    var DWELL_SNAP = 0.01;   // typed values keep hundredths
     var DWELL_KEY = "pdf-photoreader.dwell";
     var fileInput = document.getElementById("file-input");
     var btnOpen = document.getElementById("btn-open");
@@ -2848,8 +2849,9 @@ var landscapeGlobal = 0;
     function snapDwell(sec) {
       var n = clamp(Number(sec), MIN_DWELL, MAX_DWELL);
       if (!isFinite(n)) n = DEFAULT_DWELL;
-      n = Math.round(n / DWELL_STEP) * DWELL_STEP;
-      return Math.round(n * 100) / 100;
+      n = Math.round(n / DWELL_SNAP) * DWELL_SNAP;
+      n = Math.round(n * 100) / 100;
+      return Math.max(MIN_DWELL, n);
     }
 
     function formatDwell(sec) {

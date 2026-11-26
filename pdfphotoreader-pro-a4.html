@@ -252,7 +252,23 @@
       padding: 24px;
     }
     #landscape-confirm-overlay.hidden { display: none; }
-    #landscape-confirm-box {
+    #spread-prompt-overlay {
+      position: fixed; inset: 0; z-index: 1100;
+      background: rgba(0,0,0,0.82);
+      display: flex; align-items: center; justify-content: center;
+      padding: 24px;
+    }
+    #spread-prompt-overlay.hidden { display: none; }
+    #spread-prompt-msg { margin: 0 0 18px; font-size: 18px; }
+    #spread-prompt-actions {
+      display: flex; flex-wrap: wrap; gap: 10px; justify-content: flex-end;
+    }
+    #btn-spread-prompt-no {
+      background: #2a2a30;
+      color: #eee;
+      border-color: #888;
+    }
+    #landscape-confirm-box, #spread-prompt-box {
       background: #1b1b1f; color: #eee;
       border: 1px solid #444; border-radius: 10px;
       max-width: 520px; width: 100%;
@@ -685,14 +701,14 @@
 
       <h3>Dwell (time per page)</h3>
       <table>
-        <tr><td><kbd>+</kbd> <kbd>-</kbd> or the box</td><td>Set seconds per page, from 0.05 to 5. The default is 0.1 seconds.</td></tr>
+        <tr><td><kbd>+</kbd> <kbd>-</kbd> or the box</td><td>Set seconds per page, from 0.01 to 5. The default is 0.1 seconds. <kbd>+</kbd> and <kbd>-</kbd> change it by 0.05; type in the box for hundredths (the lowest is 0.01).</td></tr>
       </table>
 
       <div id="help-light-pro">
 
       <h3>Pro View</h3>
       <p>If a file is slow to process, the Pro reader automatically prepares a Pro View of the <em>next</em> file in a folder queue while you view the current one, so the next file can start more quickly. No changes are made to your original files, and nothing is written to your machine. The Pro View is only temporary — it is kept in memory for that viewing — and is prepared again the next time you open the folder.</p>
-      <p>Two-Page Spread shows two pages side by side: 1 with 2, 3 with 4, and so on, with no cover offset. You can turn it on or off only while paused on pages 1–2 (press Restart to return there). Play, Prev, Next, and Jump move by two pages. If a spread would run past the end, the last page is shown alone. Zoom and Fit are hidden while Two-Page Spread is on. Landscape is off in Two-Page Spread. Return to Single Page mode to use Landscape. Your previous landscape choice is restored when you go back to one page at a time.</p>
+      <p>Two-Page Spread shows two pages side by side: 1 with 2, 3 with 4, and so on, with no cover offset. You can turn it on or off only while paused on pages 1–2 (press Restart to return there). Play, Prev, Next, and Jump move by two pages. If a spread would run past the end, the last page is shown alone. Zoom and Fit are hidden while Two-Page Spread is on. Landscape is off in Two-Page Spread. Return to Single Page mode to use Landscape. Your previous landscape choice is restored when you go back to one page at a time. When you start a folder, you are asked whether to view the books in Two-Page Spread; Yes opens the first book at pages 1–2, No opens it one page at a time. In an opened folder, each next file keeps the display you last chose (Two-Page Spread or single page) until you change it. Choosing Two-Page Spread: the reader never shows more than two book pages at the same time. Beyond two, the print gets too small to read, and reading and absorbing the pages suffers (the law of diminishing returns). So before a book is shown in Two-Page Spread, the reader looks at its first pages; if each PDF page is already a two-page spread (a wide scan of an open book), that book is shown one PDF page at a time, so you still see two book pages, never four. Two-Page Spread returns automatically for the next book.</p>
       </div>
 
       <p>Landscape (while paused) cycles the page direction. The first press rotates 90° (the button reads Landscape On). The second press rotates the other way, 270° (Landscape Flipped). The third press returns to portrait (Landscape). Turning it at page 1 sets that direction for the whole document, including while playing. For Word, text, HTML, OpenDocument, EPUB, and images, Landscape On and Landscape Flipped also re-paginate onto landscape Letter or A4; the flipped state then turns that page 180° on screen. Native PDF and DjVu keep their own page sizes and are rotated on screen. Turning it later cycles that page only; the choice stays when you come back and while playing. Landscape is off in Two-Page Spread. Return to Single Page mode to use Landscape; your previous landscape choice is restored when you leave Two-Page Spread. If a whole-document landscape direction is set and you later press Landscape to return a page to portrait, a prompt asks whether to keep that landscape direction or switch the page to portrait. While playing, press Pause to change Landscape.</p>
@@ -730,6 +746,16 @@
   </div>
 
 
+
+  <div id="spread-prompt-overlay" class="hidden" role="dialog" aria-modal="true" aria-labelledby="spread-prompt-msg">
+    <div id="spread-prompt-box">
+      <p id="spread-prompt-msg">Would you like to view these books in Two-Page Spread (two pages side by side)?</p>
+      <div id="spread-prompt-actions">
+        <button type="button" id="btn-spread-prompt-yes">Yes, Two-Page Spread</button>
+        <button type="button" id="btn-spread-prompt-no">No, Single Page</button>
+      </div>
+    </div>
+  </div>
 
   <div id="folder-overlay" class="hidden" role="dialog" aria-modal="true" aria-labelledby="folder-title">
     <div id="folder-box">
@@ -789,7 +815,7 @@
     <div class="sep"></div>
     <div class="group">
       <label class="field" for="dwell-number">Dwell
-        <input id="dwell-number" type="number" min="0.05" max="5" step="0.05" value="0.1" aria-label="Dwell time in seconds">
+        <input id="dwell-number" type="number" min="0.01" max="5" step="0.01" value="0.1" aria-label="Dwell time in seconds">
         s
       </label>
     </div>
@@ -828,9 +854,10 @@
     "use strict";
 
     var DEFAULT_DWELL = 0.1;
-    var MIN_DWELL = 0.05;
+    var MIN_DWELL = 0.01;
     var MAX_DWELL = 5;
-    var DWELL_STEP = 0.05;
+    var DWELL_STEP = 0.05;   // + / - change
+    var DWELL_SNAP = 0.01;   // typed values keep hundredths
     var DWELL_KEY = "pdf-photoreader.dwell";
     var fileInput = document.getElementById("file-input");
     var btnOpen = document.getElementById("btn-open");
@@ -1566,7 +1593,7 @@
 
     async function adoptNextLight(file, autoplay) {
       beginFileLoadWait();
-      if (typeof resetSpreadMode === "function") resetSpreadMode();
+      // Folder files keep the current display (Two-Page Spread or single page) from book to book.
       var bag = nextLight;
       nextLight = null;
       prefetchGen++;
@@ -1582,8 +1609,11 @@
       finished = false;
       filenameEl.textContent = lastName + "  ·  " + totalPages + " page" + (totalPages === 1 ? "" : "s") + "  ·  pro" + playlistLabel();
       dropHint.classList.add("hidden");
+      applyPreSpreadCheck(lightPageDims(lightPages, Math.min(4, totalPages || 4)));
+      if (typeof updateSpreadButton === "function") updateSpreadButton();
       if (lightPages[1]) {
         await showPage(1);
+        showPreSpreadNotice();
         if (autoplay) play();
         else updateChrome();
       }
@@ -1677,14 +1707,46 @@
       hideFolderPreview();
     }
 
+    var spreadPromptOverlay = document.getElementById("spread-prompt-overlay");
+    var btnSpreadPromptYes = document.getElementById("btn-spread-prompt-yes");
+    var btnSpreadPromptNo = document.getElementById("btn-spread-prompt-no");
+    function spreadPromptOpen() {
+      return !!(spreadPromptOverlay && !spreadPromptOverlay.classList.contains("hidden"));
+    }
+    function hideSpreadPrompt() {
+      if (spreadPromptOverlay) spreadPromptOverlay.classList.add("hidden");
+    }
+    function cancelSpreadPrompt() {
+      // Back to the folder list; nothing is opened.
+      hideSpreadPrompt();
+      try { btnFolderStart.focus(); } catch (e) {}
+    }
     function startFolderPreview() {
       var files = filesForStart();
       if (!files.length) return;
+      if (isPro() && spreadPromptOverlay) {
+        // Ask about Two-Page Spread before the first book opens.
+        spreadPromptOverlay.classList.remove("hidden");
+        try { btnSpreadPromptYes.focus(); } catch (e) {}
+        return;
+      }
+      beginFolderPlay(files);
+    }
+    function answerSpreadPrompt(wantSpread) {
+      if (!spreadPromptOpen()) return;
+      hideSpreadPrompt();
+      var files = filesForStart();
+      if (!files.length) return;
+      spreadMode = !!wantSpread;
+      beginFolderPlay(files);
+    }
+    function beginFolderPlay(files) {
       cancelPrefetch();
       releaseLightData("all");
       playlist = files;
       hideFolderPreview();
       openPlaylistItem(0, true);
+      if (typeof updateSpreadButton === "function") updateSpreadButton();
     }
 
     function showFolderPreview(files, folderName) {
@@ -2808,10 +2870,57 @@ var landscapeGlobal = 0;
     var btnSpread = document.getElementById("btn-spread");
 
     function isSpread() {
-      return !!(typeof isPro === "function" && isPro() && spreadMode);
+      return !!(typeof isPro === "function" && isPro() && spreadMode && !spreadAutoSingle);
     }
     function resetSpreadMode() {
       spreadMode = false;
+      spreadAutoSingle = false;
+    }
+    // Look-ahead check: a book whose pages are already two-page spreads (wide scans)
+    // is shown one page at a time; the Two-Page Spread choice stays on for the next book.
+    var spreadAutoSingle = false;
+    var PRE_SPREAD_RATIO = 1.2;
+    var PRE_SPREAD_NOTICE = "This book's pages are already two-page spreads, so it's shown one page at a time.";
+    function looksPreSpread(dims) {
+      // dims: [{w,h}] for pages 1..4. Skip the cover when there are later pages.
+      var list = (dims || []).filter(function (d) { return d && d.w > 0 && d.h > 0; });
+      if (list.length > 1) list = list.slice(1);
+      if (!list.length) return false;
+      var wide = 0;
+      list.forEach(function (d) { if (d.w / d.h >= PRE_SPREAD_RATIO) wide++; });
+      return wide * 2 > list.length;
+    }
+    async function pdfPageDims(doc, count) {
+      var out = [], i, n = Math.min(count, doc && doc.numPages ? doc.numPages : 0);
+      for (i = 1; i <= n; i++) {
+        try {
+          var pg = await doc.getPage(i);
+          var vp = pg.getViewport({ scale: 1 });
+          out.push({ w: vp.width, h: vp.height });
+        } catch (e) { out.push(null); }
+      }
+      return out;
+    }
+    function lightPageDims(pages, count) {
+      var out = [], i;
+      for (i = 1; i <= count; i++) {
+        var rec = pages && pages[i];
+        if (!rec) { if (i <= 2) return null; break; }
+        out.push({ w: rec.w, h: rec.h });
+      }
+      return out;
+    }
+    function applyPreSpreadCheck(dims) {
+      spreadAutoSingle = false;
+      if (!(typeof isPro === "function" && isPro() && spreadMode)) return false;
+      if (!dims) return false;
+      spreadAutoSingle = looksPreSpread(dims);
+      return spreadAutoSingle;
+    }
+    function showPreSpreadNotice() {
+      if (!spreadAutoSingle) return;
+      showStatus(PRE_SPREAD_NOTICE);
+      setTimeout(function () { if (statusText.textContent === PRE_SPREAD_NOTICE) showStatus(""); }, 4000);
     }
     function isSpreadStart() {
       if (!hasSource() || !currentPage) return false;
@@ -2847,8 +2956,8 @@ var landscapeGlobal = 0;
       if (group) group.hidden = !pro;
       if (sep) sep.hidden = !pro;
       if (!btnSpread) return;
-      btnSpread.setAttribute("aria-pressed", spreadMode ? "true" : "false");
-      btnSpread.textContent = spreadMode ? "Two-Page Spread On" : "Two-Page Spread";
+      btnSpread.setAttribute("aria-pressed", isSpread() ? "true" : "false");
+      btnSpread.textContent = isSpread() ? "Two-Page Spread On" : (spreadAutoSingle ? "Two-Page Spread (paused for this book)" : "Two-Page Spread");
       if (playing) {
         btnSpread.disabled = true;
         btnSpread.title = PLAY_LOCK_TITLE;
@@ -2860,7 +2969,9 @@ var landscapeGlobal = 0;
         return;
       }
       btnSpread.disabled = false;
-      btnSpread.title = spreadMode
+      btnSpread.title = spreadAutoSingle
+        ? "This book's pages are already two-page spreads, so it is shown one page at a time. Two-Page Spread returns for the next book. Click to show this book as a spread anyway."
+        : spreadMode
         ? "Two-page spread is on. Click to show one page at a time."
         : "Show two pages side by side, starting from page 1.";
     }
@@ -2870,7 +2981,8 @@ var landscapeGlobal = 0;
         updateSpreadButton();
         return;
       }
-      spreadMode = !spreadMode;
+      if (spreadAutoSingle) spreadAutoSingle = false;  // show this wide-page book as a spread anyway
+      else spreadMode = !spreadMode;
       try { cancelZoomRender(); } catch (e) {}
       zoom = 1;
       try { stage.classList.remove("zoomed", "panning"); } catch (e2) {}
@@ -2883,7 +2995,7 @@ var landscapeGlobal = 0;
       var needRepage = (typeof shouldRepaginateForLandscape === "function" && shouldRepaginateForLandscape() && (landscapeGlobal === 1 || landscapeGlobal === 2));
       if (needRepage && typeof openAnyFile === "function" && landscapeSourceFile) {
         // Spread shows portrait pages; leaving spread restores saved global landscape pagination.
-        var useLand = !spreadMode && landscapeGlobal !== 0;
+        var useLand = !isSpread() && landscapeGlobal !== 0;
         Promise.resolve(openAnyFile(landscapeSourceFile, { keepLandscape: true, landscape: useLand, fromConvert: true })).then(updateChrome, function (err) {
           showStatus("Could not re-paginate after changing Two-Page Spread. " + (err && err.message ? err.message : ""));
           updateChrome();
@@ -3325,8 +3437,9 @@ var landscapeGlobal = 0;
     function snapDwell(sec) {
       var n = clamp(Number(sec), MIN_DWELL, MAX_DWELL);
       if (!isFinite(n)) n = DEFAULT_DWELL;
-      n = Math.round(n / DWELL_STEP) * DWELL_STEP;
-      return Math.round(n * 100) / 100;
+      n = Math.round(n / DWELL_SNAP) * DWELL_SNAP;
+      n = Math.round(n * 100) / 100;
+      return Math.max(MIN_DWELL, n);
     }
 
     function formatDwell(sec) {
@@ -3453,7 +3566,9 @@ var landscapeGlobal = 0;
       var myLoad = ++loadGen;
       playing = false;
       finished = false;
-      if (typeof resetSpreadMode === "function") resetSpreadMode();
+      // A file opened on its own starts in single page; files from an opened folder keep the current display.
+      if (typeof resetSpreadMode === "function" && !opts.fromPlaylist) resetSpreadMode();
+      if (!opts.keepLight) spreadAutoSingle = false;
       if (typeof resetLandscapeState === "function" && !opts.keepLandscape) {
         resetLandscapeState();
         if (!opts.fromConvert) {
@@ -3503,7 +3618,13 @@ var landscapeGlobal = 0;
         dropHint.classList.add("hidden");
         lastName = name;
         var start = 1;
+        if (isPro() && spreadMode) {
+          applyPreSpreadCheck(await pdfPageDims(doc, 4));
+          if (myLoad !== loadGen) return;
+        }
+        if (typeof updateSpreadButton === "function") updateSpreadButton();
         await showPage(start);
+        if (!opts.keepLight) showPreSpreadNotice();
         if (opts.autoplay && myLoad === loadGen) play();
         updateLightButton();
         if (isPro() && myLoad === loadGen) schedulePrefetchNext();
@@ -3566,6 +3687,9 @@ var landscapeGlobal = 0;
       updateFolderSelectionUI();
     });
     btnFolderStart.addEventListener("click", startFolderPreview);
+    if (btnSpreadPromptYes) btnSpreadPromptYes.addEventListener("click", function () { answerSpreadPrompt(true); });
+    if (btnSpreadPromptNo) btnSpreadPromptNo.addEventListener("click", function () { answerSpreadPrompt(false); });
+    if (spreadPromptOverlay) spreadPromptOverlay.addEventListener("click", function (ev) { if (ev.target === spreadPromptOverlay) cancelSpreadPrompt(); });
     btnFolderCancel.addEventListener("click", cancelFolderPreview);
     btnFolderOk.addEventListener("click", cancelFolderPreview);
     folderOverlay.addEventListener("click", function (e) { if (e.target === folderOverlay) cancelFolderPreview(); });
@@ -3702,6 +3826,18 @@ var landscapeGlobal = 0;
     helpOverlay.addEventListener("click", function (e) { if (e.target === helpOverlay) hideHelp(); });
     window.addEventListener("help", function (e) { e.preventDefault(); }); // old IE/Edge F1
     document.addEventListener("keydown", function (e) {
+      if (typeof spreadPromptOpen === "function" && spreadPromptOpen()) {
+        if (e.key === "Escape") {
+          e.preventDefault();
+          cancelSpreadPrompt();
+        } else if (e.key === "Enter") {
+          e.preventDefault();
+          answerSpreadPrompt(!(e.target && e.target.id === "btn-spread-prompt-no"));
+        } else if (e.key === "F1" || e.keyCode === 112 || e.key === " ") {
+          e.preventDefault();
+        }
+        return;
+      }
       if (typeof landscapeConfirmOpen === "function" && landscapeConfirmOpen()) {
         if (e.key === "Escape") {
           e.preventDefault();
